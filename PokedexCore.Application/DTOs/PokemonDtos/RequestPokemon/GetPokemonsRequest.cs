@@ -17,5 +17,7 @@ namespace PokedexCore.Application.DTOs.PokemonDtos.RequestPokemon
         public int Page { get; set; } = 1;
 
         public int PageSize { get; set; } = 10;
+
+        public int recordsPerPage { get; set; } = 20;
     }
 }

@@ -1,4 +1,5 @@
-﻿using PokedexCore.Domain.Interfaces;
+﻿using MediatR;
+using PokedexCore.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,17 +8,15 @@ using System.Threading.Tasks;
 
 namespace PokedexCore.Domain.Events.Pokemon
 {
-    public class pokemonEvolvedEvent:IDomainEvent
-    {
-        public DateTime OccurredOn { get; private set; }
-        public Guid EventId { get; private set; }
+    public class PokemonEvolvedEvent:INotification
+    {  
         public int PokemonId { get; private set; }
         public string NewName { get; private set; }
+        public string NewType { get; private set; }
 
-        public pokemonEvolvedEvent(int pokemonId, string newName)
+        public PokemonEvolvedEvent(int pokemonId, string newName,string newType)
         {
-            OccurredOn = DateTime.UtcNow;
-            EventId = Guid.NewGuid();
+            NewType = newType;
             PokemonId = pokemonId;
             NewName = newName;
         }            

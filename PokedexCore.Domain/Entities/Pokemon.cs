@@ -1,4 +1,5 @@
-﻿using PokedexCore.Domain.Enums;
+﻿using MediatR;
+using PokedexCore.Domain.Enums;
 using PokedexCore.Domain.Events.Pokemon;
 using PokedexCore.Domain.Exceptions;
 using PokedexCore.Domain.Interfaces;
@@ -26,14 +27,16 @@ namespace PokedexCore.Domain.Entities
 
         public bool IsShiny { get; set; }
 
+        public bool IsFainted { get; private set; }
+
         public int Level { get; set; }
 
         public PokemonStatus Status { get; set; }
 
         public Trainer Trainer { get; set; }
 
-        private List<IDomainEvent> _domainEvents = new();
-        public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+        private List<INotification> _domainEvents = new();
+        public IReadOnlyList<INotification> DomainEvents => _domainEvents.AsReadOnly();
 
         private Pokemon() { }
 
@@ -57,14 +60,15 @@ namespace PokedexCore.Domain.Entities
             _domainEvents.Add(new PokemonLevelUpEvent(Id, Level));
         }
 
-        public void Evolve(string newName, string NewType)
+        public void Evolve(string newName, string newType)
         {
             if (Level < 16)
-                throw new DomainException("Pokemon must be at least level 16 to evolve");
+                throw new DomainException("El Pokémon debe ser al menos nivel 16 para evolucionar.");
 
             Name = newName;
-            MainType = NewType;
-            _domainEvents.Add(new pokemonEvolvedEvent(Id, newName));
+            MainType = newType;
+
+            _domainEvents.Add(new PokemonEvolvedEvent(Id, newName, newType));
         }
 
         public void MarkAsShiny()
@@ -73,15 +77,21 @@ namespace PokedexCore.Domain.Entities
             _domainEvents.Add(new ShinyPokemonFoundEvent(Id, Name));
         }
 
-        public bool CanBattle()
+        public void CanBattle()
         {
-            return Status == PokemonStatus.Active && Level > 5;
+            if (Level < 5)
+                throw new DomainException("El Pokémon debe tener al menos nivel 5 para entrar en batalla.");
+
+            if (IsFainted)
+                throw new DomainException("El Pokémon está debilitado y no puede luchar.");
+
+            if (TrainerId <= 0)
+                throw new DomainException("Este Pokémon no está asignado a un entrenador.");
+
+            _domainEvents.Add(new PokemonCanBattleEvent(Id, Name, Level));
         }
 
-        public void ClearDomainEvents()
-        {
-            _domainEvents.Clear();
-        }
-            
+        public void ClearDomainEvents() => _domainEvents.Clear();
+       
     }
 }

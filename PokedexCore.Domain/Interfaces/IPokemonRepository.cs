@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace PokedexCore.Domain.Interfaces
+﻿namespace PokedexCore.Domain.Interfaces
 {
     public interface IPokemonRepository<T> where T: class, IEntitiesBase
     {
@@ -15,5 +9,6 @@ namespace PokedexCore.Domain.Interfaces
         Task<T> GetByAsyncId(int id, string includeProperties = "");
         Task<T> GetByConditionAsync(System.Linq.Expressions.Expression<Func<T, bool>> condition, string includeProperties = "");
         void Update(T entity);
+        IQueryable<T> Query();
     }
 }

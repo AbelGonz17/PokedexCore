@@ -4,6 +4,7 @@ using PokedexCore.Domain.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -56,6 +57,36 @@ namespace PokedexCore.Application.Services
                 Weight = pokemonApiResponse.Weight,
                 Id = pokemonApiResponse.Id
             };
+        }
+
+        public async Task<bool> IsValidEvolutionAsync(string currentName, string evolvedFormName)
+        {
+            var speciesResponse = await httpClient.GetFromJsonAsync<dynamic>($"https://pokeapi.co/api/v2/pokemon-species/{currentName.ToLower()}");
+            if (speciesResponse == null) return false;
+
+            string evolutionChainUrl = speciesResponse["evolution_chain"]["url"];
+            var chainResponse = await httpClient.GetFromJsonAsync<dynamic>(evolutionChainUrl);
+            if (chainResponse == null) return false;
+
+            dynamic chain = chainResponse["chain"];
+            return SearchEvolutionChain(chain, evolvedFormName.ToLower());
+
+
+        }
+
+        private bool SearchEvolutionChain(dynamic chain, string evolvedForm)
+        {
+            var speciesName = ((string)chain["species"]["name"]).ToLower();
+            if (speciesName == evolvedForm)
+                return true;
+
+            foreach (var evo in chain["evolves_to"])
+            {
+                if (SearchEvolutionChain(evo, evolvedForm))
+                    return true;
+            }
+
+            return false;
         }
     }
 }

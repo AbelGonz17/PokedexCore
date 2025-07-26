@@ -11,5 +11,6 @@ namespace PokedexCore.Application.Interfaces.ExternalServices
     {
         Task<bool> PokemonExistAsync(string pokemonName);
         Task<PokemonApiData> GetPokemonDataAsync(string PokemonName);
+        Task<bool> IsValidEvolutionAsync(string currentName, string evolvedFormName);
     }
 }
