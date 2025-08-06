@@ -1,12 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PokedexCore.Data.Contex;
+using PokedexCore.Domain.Entities;
 using PokedexCore.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PokedexCore.Data.Repositories
 {
@@ -16,11 +12,11 @@ namespace PokedexCore.Data.Repositories
         private readonly DbSet<T> _dbSet;
 
         public PokemonRepository(PokedexDbContext context)
-        {
+        { 
             _context = context;
             _dbSet = context.Set<T>();
         }
-   
+      
 
         public async Task<T> GetByAsyncId(int id, string includeProperties = "")
         {
@@ -79,16 +75,17 @@ namespace PokedexCore.Data.Repositories
 
         public async Task<List<T>> GetAllAsync(string includeProperties = "")
         {
-            IQueryable<T> query = _dbSet;
+            IQueryable<T> queryable = _context.Set<T>();
 
             if (!string.IsNullOrWhiteSpace(includeProperties))
             {
-                foreach (var includeProperty in includeProperties.Split(','))
+                foreach (var includeProperty in includeProperties.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 {
-                    query = query.Include(includeProperty.Trim());
+                    queryable = queryable.Include(includeProperty.Trim());
                 }
             }
-            return await query.ToListAsync();
+
+            return await queryable.ToListAsync();
         }
     }
 

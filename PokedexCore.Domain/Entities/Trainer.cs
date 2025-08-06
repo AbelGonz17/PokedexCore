@@ -21,8 +21,6 @@ namespace PokedexCore.Domain.Entities
         [EmailAddress]
         public string Email { get; private set; }
 
-        public string UserId { get; private set; }
-
         public DateTime RegistrationDate { get; private set; }
 
         public int PokemonCount { get; private set; }

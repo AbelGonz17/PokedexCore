@@ -1,17 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PokedexCore.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PokedexCore.Data.Contex
 {
     public class PokedexDbContext : IdentityDbContext
     {
-        public PokedexDbContext(DbContextOptions options) : base(options)
+        public PokedexDbContext(DbContextOptions<PokedexDbContext> options) : base(options)
         {
         }
 

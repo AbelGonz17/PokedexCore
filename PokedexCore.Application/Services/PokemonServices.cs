@@ -1,5 +1,6 @@
 ﻿using MediatR;
-using PokedexCore.Application.DTOs.Pagination;
+using PokedexCore.Application.DTOs;
+using PokedexCore.Application.DTOs.Paginacion;
 using PokedexCore.Application.DTOs.PokemonDtos.RequestPokemon;
 using PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon;
 using PokedexCore.Application.Interfaces;
@@ -7,7 +8,8 @@ using PokedexCore.Application.Interfaces.ExternalServices;
 using PokedexCore.Domain.Entities;
 using PokedexCore.Domain.Exceptions;
 using PokedexCore.Domain.Interfaces;
-using System.ComponentModel.Design;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace PokedexCore.Application.Services
 {
@@ -15,37 +17,91 @@ namespace PokedexCore.Application.Services
     {
         private readonly IUnitOfWork unitOfWork;
         private readonly IMediator eventBus;
+        private readonly HttpClient httpClient;
         private readonly IPokemonApiService pokemonApiService;
 
-        public PokemonServices(IUnitOfWork unitOfWork, IPokemonApiService pokemonApiService, IMediator eventBus)
+        public PokemonServices(IUnitOfWork unitOfWork, IPokemonApiService pokemonApiService, IMediator eventBus,HttpClient httpClient)
         {
             this.unitOfWork = unitOfWork;
             this.eventBus = eventBus;
-            pokemonApiService = pokemonApiService;
+            this.httpClient = httpClient;
+            this.pokemonApiService = pokemonApiService;
         }
 
-        public async Task<PaginatedResponse<PokemonListResponse>> GetAllAsync(GetPokemonsRequest request)
+        public async Task<ApiResponse<PagedResponse<PokemonListResponse>>> GetAllAsync(int page , int pageSize, string? type = null)
         {
-            var query = unitOfWork.Pokemon.Query();
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 50) pageSize = 10;
 
-            if (request.TrainerId.HasValue)
-                query = query.Where(p => p.TrainerId == request.TrainerId);
+            var offset = (page - 1) * pageSize;
 
-            if (!string.IsNullOrEmpty(request.MainType))
-                query = query.Where(p => p.MainType == request.MainType);
+            List<PokemonListResponse> pokemons;
+            int totalCount;
 
-            if (!string.IsNullOrEmpty(request.Region))
-                query = query.Where(p => p.Region == request.Region);
-
-            var projection = query.Select(p => new PokemonListResponse
+            if (!string.IsNullOrWhiteSpace(type))
             {
-                Id = p.Id,
-                Name = p.Name,
-                MainType = p.MainType,
-                Level = p.Level.ToString()
-            });
+                // Usar el nuevo método para obtener TODOS los de ese tipo
+                pokemons = await pokemonApiService.GetPokemonsByTypeAsync(type, pageSize, offset);
 
-            return await projection.PaginateAsync(request.Page, request.recordsPerPage);
+                // Obtener total de pokémon de ese tipo
+                var typeListResponse = await httpClient.GetAsync($"https://pokeapi.co/api/v2/type/{type.ToLower()}");
+                var json = await typeListResponse.Content.ReadAsStringAsync();
+                var typeData = JsonSerializer.Deserialize<PokemonTypeApiResponse>(json, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                });
+                totalCount = typeData.Pokemon.Count;
+            }
+            else
+            {
+                pokemons = await pokemonApiService.GetAllPokemonsAsync(pageSize, offset);
+                totalCount = await pokemonApiService.GetPokemonTotalCountAsync();
+            }
+
+            if (pokemons == null || !pokemons.Any())
+                return ApiResponse<PagedResponse<PokemonListResponse>>.Fail("No pokemons found from PokeAPI");
+
+            var paged = new PagedResponse<PokemonListResponse>
+            {
+                Data = pokemons,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+
+            return ApiResponse<PagedResponse<PokemonListResponse>>.Ok(paged);
+        }
+
+        public async Task<ApiResponse<PokemonDetailResponse>> GetByNameFromExternalAsync(string name)
+        {
+            try
+            {
+                var data = await pokemonApiService.GetPokemonByNameAsync(name);
+
+                var result = new PokemonDetailResponse
+                {
+                    Id = data.Id,
+                    Name = data.Name,
+                    MainType = data.MainType,
+                    Region = "Unknown",
+                    CaptureDate = DateTime.UtcNow,
+                    Level = 1,
+                    IsShiny = false,
+                    Status = "Active",
+                    Trainer = null
+                };
+
+                return ApiResponse<PokemonDetailResponse>.Ok(result);
+            }
+            catch(DomainException ex)
+            {
+                return ApiResponse<PokemonDetailResponse>.Fail(ex.Message);
+            }
+            catch (Exception )
+            {
+                return ApiResponse<PokemonDetailResponse>.Fail("An unexpected error ocurred while fetching data from PokeAPI.");
+            }
+
         }
 
         public async Task<PokemonResponse> CreateAsync(CreatePokemonRequest request)
@@ -65,36 +121,7 @@ namespace PokedexCore.Application.Services
 
             return MapToResponse(pokemon);
         }
-
-        public async Task<PokemonDetailResponse> GetByIdAsync(int id)
-        {
-            var pokemon = await unitOfWork.Pokemon.GetByAsyncId(id);
-            if (pokemon == null)
-                throw new DomainException("Pokémon not found");
-
-            var trainer = await unitOfWork.Trainer.GetByAsyncId(pokemon.TrainerId);
-            if (trainer == null)
-                throw new DomainException("Trainer not found");
-
-            return new PokemonDetailResponse
-            {
-                Id = pokemon.Id,
-                Name = pokemon.Name,
-                MainType = pokemon.MainType,
-                Region = pokemon.Region,
-                CaptureDate = pokemon.CaptureDate,
-                Level = pokemon.Level,
-                IsShiny = pokemon.IsShiny,
-                Status = pokemon.Status.ToString(),
-                Trainer = new DTOs.TrainerDtos.ResponseTrainer.TrainerBasicResponse
-                {
-                    Id = trainer.Id,
-                    UserName = trainer.UserName,
-                    Rank = trainer.Rank.ToString(),
-                }
-            };
-        }
-
+      
         public async Task<string> Delete(int id)
         {
             var pokemon = await unitOfWork.Pokemon.GetByAsyncId(id);

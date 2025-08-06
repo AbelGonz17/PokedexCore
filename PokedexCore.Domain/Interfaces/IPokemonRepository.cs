@@ -9,6 +9,6 @@
         Task<T> GetByAsyncId(int id, string includeProperties = "");
         Task<T> GetByConditionAsync(System.Linq.Expressions.Expression<Func<T, bool>> condition, string includeProperties = "");
         void Update(T entity);
-        IQueryable<T> Query();
+
     }
 }

@@ -6,14 +6,9 @@ using System.Threading.Tasks;
 
 namespace PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon
 {
-    public class PokemonListResponse
+    public class PokemonBasicInfo
     {
-        public int Id { get; set; }
-
         public string Name { get; set; }
-
-        public string MainType { get; set; }
-
-        public int Level { get; set; } = 1;
+        public string Url { get; set; }
     }
 }

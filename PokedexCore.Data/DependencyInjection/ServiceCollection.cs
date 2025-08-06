@@ -2,17 +2,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PokedexCore.Application.Events.Handlers;
+using PokedexCore.Application.Interfaces;
+using PokedexCore.Application.Interfaces.ExternalServices;
+using PokedexCore.Application.Services;
 using PokedexCore.Data.Contex;
 using PokedexCore.Data.Repositories;
 using PokedexCore.Data.UnitWork;
-using PokedexCore.Data.UnitWork;
 using PokedexCore.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PokedexCore.Data.DependencyInjection
 {
@@ -26,8 +22,11 @@ namespace PokedexCore.Data.DependencyInjection
             });
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped(typeof(IPokemonRepository<>), typeof(PokemonRepository<>));
             services.AddScoped(typeof(ITrainerRepository<>), typeof(TrainerRepository<>));
+          
+            services.AddScoped<IPokemonServices, PokemonServices>();
+            services.AddScoped<IAuthServices, AuthServices>();
+            services.AddScoped<ITrainerService, TrainerService>();
 
             services.AddMediatR(cfg =>
             {

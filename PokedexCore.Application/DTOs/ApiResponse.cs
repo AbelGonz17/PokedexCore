@@ -14,5 +14,7 @@ namespace PokedexCore.Application.DTOs
         public List<string> Errors { get; set; } = new();
 
          public static ApiResponse<T> Fail(string message) => new() { Success = false, Message = message};
+        public static ApiResponse<T> Ok(T datos) => new() { Success = true, Data = datos };
+
     }
 }

@@ -1,4 +1,6 @@
-﻿using PokedexCore.Application.DTOs;
+﻿using Microsoft.Extensions.Caching.Memory;
+using PokedexCore.Application.DTOs;
+using PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon;
 using PokedexCore.Application.Interfaces.ExternalServices;
 using PokedexCore.Domain.Exceptions;
 using System;
@@ -15,10 +17,132 @@ namespace PokedexCore.Application.Services
     {
         private const string BASE_URL = "https://pokeapi.co/api/v2/pokemon/";
         private readonly HttpClient httpClient;
-
+       
         public PokemonApiService(HttpClient httpClient)
         {
-            this.httpClient = httpClient;
+            this.httpClient = httpClient;          
+        }
+
+        public async Task<List<PokemonListResponse>> GetAllPokemonsAsync(int limit= 10 , int offset = 0)
+        {          
+            try
+            {        
+                // Obtener la lista de pokemones
+                var listResponse = await httpClient.GetAsync($"https://pokeapi.co/api/v2/pokemon?limit={limit}&offset={offset}");
+                if (!listResponse.IsSuccessStatusCode)
+                    return new List<PokemonListResponse>();
+
+                var listJson = await listResponse.Content.ReadAsStringAsync();
+                var pokemonList = JsonSerializer.Deserialize<PokemonListApiResponse>(listJson, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                });
+
+                var pokemonResponses = new List<PokemonListResponse>();
+              
+                var tasks = pokemonList.Results.Select(async pokemon =>
+                {
+                    try
+                    {
+                        var pokemonData = await GetPokemonDataAsync(pokemon.Name);
+                        return new PokemonListResponse
+                        {
+                            Id = pokemonData.Id,
+                            Name = pokemonData.Name,
+                            MainType = pokemonData.Types.FirstOrDefault() ?? "unknown",                            
+                        };
+                    }
+                    catch
+                    {
+                        return null; // En caso de error, retornamos null
+                    }
+                });
+
+                var results = await Task.WhenAll(tasks);
+                return results.Where(r => r != null).ToList();           
+
+            }
+            catch
+            {
+                return new List<PokemonListResponse>();
+            }
+        }
+
+        public async Task<PokemonDetailResponse> GetPokemonByNameAsync(string name)
+        {
+            var data = await GetPokemonDataAsync(name);
+
+            return new PokemonDetailResponse
+            {
+                Id = data.Id,
+                Name = data.Name,
+                MainType = data.Types.FirstOrDefault() ?? "unknown",
+                Region = "Unknown",
+                CaptureDate = DateTime.UtcNow,
+                Level = 1,
+                IsShiny = false,
+                Status = "Active",
+                Trainer = null
+            };
+        }
+
+        public async Task<List<PokemonListResponse>> GetPokemonsByTypeAsync(string type, int limit, int offset)
+        {
+            var response = await httpClient.GetAsync($"https://pokeapi.co/api/v2/type/{type.ToLower()}");
+            if (!response.IsSuccessStatusCode)
+                return new List<PokemonListResponse>();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var typeData = JsonSerializer.Deserialize<PokemonTypeApiResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+            });
+
+            // Lista completa de pokémon de ese tipo
+            var allPokemons = typeData.Pokemon
+                .Select(p => p.Pokemon.Name)
+                .ToList();
+
+            // Paginamos manualmente
+            var pagedNames = allPokemons.Skip(offset).Take(limit).ToList();
+
+            // Obtener detalles de esos pokémon
+            var tasks = pagedNames.Select(async name =>
+            {
+                var pokemonData = await GetPokemonDataAsync(name);
+                return new PokemonListResponse
+                {
+                    Id = pokemonData.Id,
+                    Name = pokemonData.Name,
+                    MainType = pokemonData.Types.FirstOrDefault() ?? "unknown",
+                    Level = 1
+                };
+            });
+
+            var results = await Task.WhenAll(tasks);
+            return results.Where(r => r != null).ToList();
+        }
+
+        public async Task<int> GetPokemonTotalCountAsync()
+        {
+            try
+            {
+                var response = await httpClient.GetAsync("https://pokeapi.co/api/v2/pokemon?limit=1");
+                if (!response.IsSuccessStatusCode)
+                    return 0;
+
+                var json = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PokemonListApiResponse>(json, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                });
+
+                return result?.Count ?? 0;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         public async Task<bool> PokemonExistAsync(string pokemonName)

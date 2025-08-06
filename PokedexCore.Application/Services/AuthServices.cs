@@ -18,16 +18,16 @@ using System.Threading.Tasks;
 
 namespace PokedexCore.Application.Services
 {
-    public class AuthSercices : IAuthSercices
+    public class AuthServices : IAuthServices
     {
         private readonly UserManager<IdentityUser> userManager;
         private readonly SignInManager<IdentityUser> signInManager;
         private readonly IConfiguration configuration;
         private readonly IUnitOfWork unitOfWork;
-        private readonly ILogger<AuthSercices> logger;
+        private readonly ILogger<AuthServices> logger;
 
-        public AuthSercices(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager,
-            IConfiguration configuration, IUnitOfWork unitOfWork, ILogger<AuthSercices> logger)
+        public AuthServices(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager,
+            IConfiguration configuration, IUnitOfWork unitOfWork, ILogger<AuthServices> logger)
         {
             this.userManager = userManager;
             this.signInManager = signInManager;
@@ -52,7 +52,8 @@ namespace PokedexCore.Application.Services
 
             if (!result.Succeeded)
             {
-                return ApiResponse<AuthenticationResponseDTO>.Fail("Error creating user.");
+                var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+                return ApiResponse<AuthenticationResponseDTO>.Fail(errors);
             }
 
             try
