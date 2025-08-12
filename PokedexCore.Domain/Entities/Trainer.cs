@@ -23,12 +23,12 @@ namespace PokedexCore.Domain.Entities
 
         public DateTime RegistrationDate { get; private set; }
 
-        public int PokemonCount { get; private set; }
+        public int PokemonCount { get; set; }
 
         public TrainerRank Rank { get; private set; }
 
-        private List<Pokemon> _pokemons = new();
-        public IReadOnlyList<Pokemon> Pokemons => _pokemons.AsReadOnly();
+        private List<TrainerPokemons> _pokemons = new();
+        public IReadOnlyList<TrainerPokemons> Pokemons => _pokemons.AsReadOnly();
 
         private List<IDomainEvent> _domainEvents = new();
         public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
@@ -50,18 +50,7 @@ namespace PokedexCore.Domain.Entities
         {
             userId = userId;
         }
-
-        public void CatchPokemon(Pokemon pokemon)
-        {
-            if (PokemonCount >= GetMaxPokemonCapacity())
-                throw new DomainException("Trainer has reached maximum Pokemon capacity");
-
-            _pokemons.Add(pokemon);
-            PokemonCount++;
-
-            CheckForRankUp();
-            _domainEvents.Add(new PokemonCaughtByTrainer(Id, pokemon.Id));
-        }
+       
 
         public void ReleasePokemon(int pokemonId)
         {

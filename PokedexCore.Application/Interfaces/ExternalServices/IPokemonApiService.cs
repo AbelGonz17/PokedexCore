@@ -16,6 +16,6 @@ namespace PokedexCore.Application.Interfaces.ExternalServices
         Task<List<PokemonListResponse>> GetAllPokemonsAsync(int limit , int offset);
         Task<int> GetPokemonTotalCountAsync();
         Task<List<PokemonListResponse>> GetPokemonsByTypeAsync(string type, int limit, int offset);
-        Task<PokemonDetailResponse> GetPokemonByNameAsync(string name);
+        Task<ApiResponse<PokemonDetailResponse>> GetPokemonByNameAsync(string name);
     }
 }

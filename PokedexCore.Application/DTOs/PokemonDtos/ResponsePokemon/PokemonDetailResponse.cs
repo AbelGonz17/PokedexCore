@@ -1,4 +1,5 @@
 ﻿using PokedexCore.Application.DTOs.TrainerDtos.ResponseTrainer;
+using PokedexCore.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +24,7 @@ namespace PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon
 
         public bool IsShiny { get; set; }
 
-        public string Status { get; set; }
+        public PokemonStatus Status { get; set; }
 
         public TrainerBasicResponse Trainer { get; set; }
     }

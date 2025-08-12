@@ -5,7 +5,9 @@ using PokedexCore.Application.DTOs.PokemonDtos.RequestPokemon;
 using PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon;
 using PokedexCore.Application.Interfaces;
 using PokedexCore.Application.Interfaces.ExternalServices;
+using PokedexCore.Data.UnitWork;
 using PokedexCore.Domain.Entities;
+using PokedexCore.Domain.Enums;
 using PokedexCore.Domain.Exceptions;
 using PokedexCore.Domain.Interfaces;
 using System.Net.Http;
@@ -80,14 +82,14 @@ namespace PokedexCore.Application.Services
 
                 var result = new PokemonDetailResponse
                 {
-                    Id = data.Id,
-                    Name = data.Name,
-                    MainType = data.MainType,
+                    Id = data.Data.Id,
+                    Name = data.Data.Name,
+                    MainType = data.Data.MainType,
                     Region = "Unknown",
                     CaptureDate = DateTime.UtcNow,
                     Level = 1,
                     IsShiny = false,
-                    Status = "Active",
+                    Status = PokemonStatus.Active,
                     Trainer = null
                 };
 

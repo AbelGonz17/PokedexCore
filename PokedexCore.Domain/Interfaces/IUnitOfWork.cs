@@ -1,17 +1,17 @@
 ﻿using PokedexCore.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using PokedexCore.Domain.Interfaces;
 
-namespace PokedexCore.Domain.Interfaces
+namespace PokedexCore.Data.UnitWork
 {
-    public interface IUnitOfWork
+    public interface IUnitOfWork:IDisposable
     {
-        IPokemonRepository<Pokemon> Pokemon { get; }
+        Task BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
 
+        IPokemonRepository<Pokemon> Pokemon { get; }
         ITrainerRepository<Trainer> Trainer { get; }
+        ITrainerPokemonRepository TrainerPokemons { get; }
 
         Task<int> SaveChangesAsync();
     }

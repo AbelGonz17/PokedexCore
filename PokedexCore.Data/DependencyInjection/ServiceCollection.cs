@@ -7,6 +7,7 @@ using PokedexCore.Application.Interfaces.ExternalServices;
 using PokedexCore.Application.Services;
 using PokedexCore.Data.Contex;
 using PokedexCore.Data.Repositories;
+using PokedexCore.Data.Securtiry;
 using PokedexCore.Data.UnitWork;
 using PokedexCore.Domain.Interfaces;
 
@@ -21,12 +22,15 @@ namespace PokedexCore.Data.DependencyInjection
                 optionsAction.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
             });
 
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();  
             services.AddScoped(typeof(ITrainerRepository<>), typeof(TrainerRepository<>));
           
             services.AddScoped<IPokemonServices, PokemonServices>();
+            services.AddScoped<ITrainerPokemonRepository, TrainerPokemonRepository>();
             services.AddScoped<IAuthServices, AuthServices>();
             services.AddScoped<ITrainerService, TrainerService>();
+            services.AddScoped<ICurrentUserHelper, CurrentUserHelper>();
+            services.AddScoped<IConsoleService, ConsoleService>();
 
             services.AddMediatR(cfg =>
             {

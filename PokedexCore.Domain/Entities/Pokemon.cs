@@ -51,6 +51,24 @@ namespace PokedexCore.Domain.Entities
             Status = PokemonStatus.Wild;
         }
 
+        public static Pokemon CreatePokemon(string name, string mainType, string region, DateTime captureDate,
+            bool isShiny, Trainer trainer)
+        {
+            return new Pokemon
+            {                
+                Name = name,
+                MainType = mainType ?? "Unknown",
+                Region = region ?? "Unknown",
+                TrainerId = trainer.Id,
+                CaptureDate = captureDate,
+                IsShiny = isShiny,
+                Status = PokemonStatus.Active,
+                Trainer = trainer,
+                Level = 1
+            };
+        }
+
+
         public void levelUP()
         {
             if (Level >= 100)

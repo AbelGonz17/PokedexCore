@@ -6,6 +6,7 @@ using PokedexCore.Application.DTOs;
 using PokedexCore.Application.DTOs.Auth;
 using PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon;
 using PokedexCore.Application.Interfaces;
+using PokedexCore.Data.UnitWork;
 using PokedexCore.Domain.Entities;
 using PokedexCore.Domain.Interfaces;
 using System;

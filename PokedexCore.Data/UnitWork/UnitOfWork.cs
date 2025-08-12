@@ -1,34 +1,74 @@
-﻿using PokedexCore.Data.Contex;
+﻿using Microsoft.EntityFrameworkCore.Storage;
+using PokedexCore.Data.Contex;
 using PokedexCore.Data.Repositories;
 using PokedexCore.Domain.Entities;
 using PokedexCore.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PokedexCore.Data.UnitWork
 {
-    public class UnitOfWork:IUnitOfWork
+    public class UnitOfWork : IUnitOfWork
     {
-        private readonly PokedexDbContext context;
+        private readonly PokedexDbContext _context;
+        private IDbContextTransaction _currentTransaction;
+        public IPokemonRepository<Pokemon> Pokemon { get; private set; }
+        public ITrainerRepository<Trainer> Trainer { get; private set; }
+        public ITrainerPokemonRepository TrainerPokemons{ get; private set; }
 
-        public IPokemonRepository<Pokemon> Pokemon { get; }
-        public ITrainerRepository<Trainer> Trainer { get; }
-
-        public UnitOfWork(PokedexDbContext context)
+        public UnitOfWork(PokedexDbContext contex)
         {
-            this.context = context;
-            Pokemon = new PokemonRepository<Pokemon>(context);
-            Trainer = new TrainerRepository<Trainer>(context);
+            _context = contex;
+            Pokemon = new PokemonRepository<Pokemon>(contex);
+            Trainer = new TrainerRepository<Trainer>(contex);
+            TrainerPokemons = new TrainerPokemonRepository(contex);
         }
 
         public async Task<int> SaveChangesAsync()
         {
-            return await context.SaveChangesAsync();
+            return await _context.SaveChangesAsync();
+        }
+
+        public async Task BeginTransactionAsync()
+        {
+            if (_currentTransaction == null)
+                _currentTransaction = await _context.Database.BeginTransactionAsync();
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            try
+            {
+                await _context.SaveChangesAsync();
+                await _currentTransaction?.CommitAsync();
+            }
+            finally
+            {
+                if (_currentTransaction != null)
+                {
+                    await _currentTransaction.DisposeAsync();
+                    _currentTransaction = null;
+                }
+            }
+        }
+
+        public async Task RollbackTransactionAsync()
+        {
+            try
+            {
+                await _currentTransaction?.RollbackAsync();
+            }
+            finally
+            {
+                if (_currentTransaction != null)
+                {
+                    await _currentTransaction.DisposeAsync();
+                    _currentTransaction = null;
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            _context.Dispose();
         }
     }
 }
-
-   

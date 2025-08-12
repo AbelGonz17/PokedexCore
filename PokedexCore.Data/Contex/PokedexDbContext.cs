@@ -17,5 +17,6 @@ namespace PokedexCore.Data.Contex
 
         public DbSet<Pokemon> Pokemons { get; set; }
         public DbSet<Trainer> Trainers { get; set; }
+        public DbSet<TrainerPokemons> TrainerPokemons { get; set; }
     }
 }

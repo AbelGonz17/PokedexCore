@@ -2,6 +2,7 @@
 using PokedexCore.Application.DTOs;
 using PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon;
 using PokedexCore.Application.Interfaces.ExternalServices;
+using PokedexCore.Domain.Enums;
 using PokedexCore.Domain.Exceptions;
 using System;
 using System.Collections.Generic;
@@ -68,11 +69,15 @@ namespace PokedexCore.Application.Services
             }
         }
 
-        public async Task<PokemonDetailResponse> GetPokemonByNameAsync(string name)
+        public async Task<ApiResponse<PokemonDetailResponse>> GetPokemonByNameAsync(string name)
         {
             var data = await GetPokemonDataAsync(name);
+            if (data == null)
+            {
+                return ApiResponse<PokemonDetailResponse>.Fail("Pokémon not found");
+            }
 
-            return new PokemonDetailResponse
+            var response = new PokemonDetailResponse
             {
                 Id = data.Id,
                 Name = data.Name,
@@ -81,9 +86,11 @@ namespace PokedexCore.Application.Services
                 CaptureDate = DateTime.UtcNow,
                 Level = 1,
                 IsShiny = false,
-                Status = "Active",
+                Status = PokemonStatus.Active,
                 Trainer = null
             };
+
+            return ApiResponse<PokemonDetailResponse>.Ok(response);
         }
 
         public async Task<List<PokemonListResponse>> GetPokemonsByTypeAsync(string type, int limit, int offset)
