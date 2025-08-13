@@ -36,6 +36,12 @@ namespace PokedexCore.Data.Repositories
         {
             _context.TrainerPokemons.Update(entity);
         }
+
+        public async Task DeleteAsync(TrainerPokemons entity)
+        {
+            _context.TrainerPokemons.Remove(entity);
+            await Task.CompletedTask;
+        }
     }
 }
 

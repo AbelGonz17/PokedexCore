@@ -91,7 +91,6 @@ namespace PokedexCore.Application.Services
             return ApiResponse<TrainerDetailResponse>.Ok(response);
         }
 
-
         public async Task<ApiResponse<string>> CatchPokemonAsync(CatchPokemonRequest request)
         {
             try
@@ -115,6 +114,245 @@ namespace PokedexCore.Application.Services
             {
                 consoleService.WriteLine($"General error: {ex.Message}");
                 return ApiResponse<string>.Fail("An error occurred while trying to catch the Pokemon. Please try again.");
+            }
+        }
+
+        public async Task<ApiResponse<string>> ReleasePokemonAsync(ReleasePokemonRequest request, int trainerId)
+        {
+            // Validación básica
+            if (request == null || string.IsNullOrWhiteSpace(request.Name))
+                return ApiResponse<string>.Fail("Pokemon name is required");
+
+            if (request.Quantity <= 0)
+                return ApiResponse<string>.Fail("Quantity must be at least 1");
+
+            // Inicio transacción
+            await unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                var trainer = await unitOfWork.Trainer.GetByAsyncId(trainerId);
+                if (trainer == null)
+                {
+                    await unitOfWork.RollbackTransactionAsync();
+                    return ApiResponse<string>.Fail("Trainer not found");
+                }
+
+                var basePokemon = await unitOfWork.Pokemon.GetByConditionAsync(p => p.Name == request.Name);
+                if (basePokemon == null)
+                {
+                    await unitOfWork.RollbackTransactionAsync();
+                    return ApiResponse<string>.Fail("This Pokémon species does not exist.");
+                }
+
+                var trainerPokemon = await unitOfWork.TrainerPokemons
+                    .GetByTrainerAndPokemonAsync(trainerId, basePokemon.Id);
+
+                if (trainerPokemon == null)
+                {
+                    await unitOfWork.RollbackTransactionAsync();
+                    return ApiResponse<string>.Fail("You don't have that Pokémon.");
+                }
+
+                // Lógica para liberar
+                if (trainerPokemon.Quantity > request.Quantity)
+                {
+                    trainerPokemon.Quantity -= request.Quantity;
+                    await unitOfWork.TrainerPokemons.UpdateAsync(trainerPokemon);
+                }
+                else
+                {
+                    await unitOfWork.TrainerPokemons.DeleteAsync(trainerPokemon);
+                }
+
+                // Actualizar contador en trainer
+                trainer.PokemonCount -= Math.Min(trainerPokemon.Quantity, request.Quantity);
+
+                await unitOfWork.SaveChangesAsync();
+                await unitOfWork.CommitTransactionAsync();
+
+                return ApiResponse<string>.Ok($"Released {request.Quantity} {request.Name}(s) successfully.");
+            }
+            catch (Exception ex)
+            {
+                await unitOfWork.RollbackTransactionAsync();
+                return ApiResponse<string>.Fail("An error occurred while releasing the Pokémon.");
+            }
+        }
+
+        public async Task<ApiResponse<string>> BattlePokemonAsync(BattlePokemonRequest request)
+        {
+            try
+            {
+                // Validaciones iniciales
+                var validationResult = await ValidateBattleRequestAsync(request);
+                if (!validationResult.IsValid)
+                    return ApiResponse<string>.Fail(validationResult.ErrorMessage);
+
+                var trainer = validationResult.Trainer;
+                var myPokemon = validationResult.MyPokemon;
+
+                // Obtener un Pokémon random como oponente
+                var opponent = await GetRandomOpponentAsync();
+                if (opponent == null)
+                    return ApiResponse<string>.Fail("No opponents available for battle");
+
+                // Simulación de batalla
+                var battleResult = await SimulateBattleAsync(myPokemon, opponent);
+
+                // Procesar resultado de batalla
+                return await ProcessBattleResultAsync(myPokemon, opponent, battleResult);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error during Pokemon battle simulation");
+                return ApiResponse<string>.Fail("An error occurred during the battle. Please try again.");
+            }
+        }
+
+        private async Task<BattleValidationResult> ValidateBattleRequestAsync(BattlePokemonRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.PokemonName))
+                return BattleValidationResult.Invalid("Pokemon name is required");
+
+            var trainerId = currentUser.GetUserId();
+            if (trainerId == 0)
+                return BattleValidationResult.Invalid("Unauthenticated Trainer");
+
+            var trainer = await unitOfWork.Trainer.GetByAsyncId(trainerId);
+            if (trainer == null)
+                return BattleValidationResult.Invalid("Trainer not found");
+
+            // Verificar que el trainer tenga ese Pokémon
+            var basePokemon = await unitOfWork.Pokemon.GetByConditionAsync(p => p.Name == request.PokemonName);
+            if (basePokemon == null)
+                return BattleValidationResult.Invalid("This Pokémon species does not exist");
+
+            var myPokemon = await unitOfWork.TrainerPokemons
+                .GetByTrainerAndPokemonAsync(trainerId, basePokemon.Id);
+
+            if (myPokemon == null)
+                return BattleValidationResult.Invalid("You don't have this Pokémon in your collection");
+
+            return BattleValidationResult.Valid(trainer, myPokemon);
+        }
+
+        private async Task<Pokemon> GetRandomOpponentAsync()
+        {
+            try
+            {
+                // Obtener todos los Pokémon de la base de datos
+                var allPokemons = await unitOfWork.Pokemon.GetAllAsync();
+                if (allPokemons == null || !allPokemons.Any())
+                    return null;
+
+                // Seleccionar uno random
+                var randomIndex = Random.Shared.Next(0, allPokemons.Count());
+                return allPokemons.ElementAt(randomIndex);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private async Task<BattleResult> SimulateBattleAsync(TrainerPokemons myPokemon, Pokemon opponent)
+        {
+            var battleMessage = $"🥊 {myPokemon.Pokemon.Name} vs {opponent.Name}";
+            using var cts = new CancellationTokenSource();
+
+            var spinnerTask = consoleService.ShowSpinnerAsync(battleMessage, cts.Token);
+
+            // Simular tiempo de batalla
+            await Task.Delay(1000);
+            await Task.Delay(Random.Shared.Next(2000, 4000));
+
+            // Calcular probabilidad de victoria basada en level
+            double winChance = CalculateWinChance(myPokemon.Level);
+            double roll = Random.Shared.NextDouble();
+
+            cts.Cancel();
+            await spinnerTask;
+
+            bool victory = roll <= winChance;
+            int experienceGained = victory ? Random.Shared.Next(50, 101) : Random.Shared.Next(10, 31);
+
+            return new BattleResult
+            {
+                Victory = victory,
+                ExperienceGained = experienceGained,
+                OpponentName = opponent.Name
+            };
+        }
+
+        private double CalculateWinChance(int pokemonLevel)
+        {
+            // Base chance of 50%, modified by level
+            double baseChance = 0.5;
+            double levelBonus = pokemonLevel * 0.02; // 2% bonus per level
+            double finalChance = Math.Min(0.85, baseChance + levelBonus); // Max 85% chance
+
+            return finalChance;
+        }
+
+        private async Task<ApiResponse<string>> ProcessBattleResultAsync(TrainerPokemons myPokemon, Pokemon opponent, BattleResult battleResult)
+        {
+            await unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // Guardar level anterior para comparar
+                int previousLevel = myPokemon.Level;
+
+                // Actualizar experiencia del Pokémon
+                myPokemon.Experience += battleResult.ExperienceGained;
+
+                // Verificar si debe subir de nivel
+                int newLevel = CalculateLevelFromExperience(myPokemon.Experience);
+                bool leveledUp = newLevel > previousLevel;
+
+                if (leveledUp)
+                {
+                    myPokemon.Level = newLevel;
+                }
+
+                await unitOfWork.TrainerPokemons.UpdateAsync(myPokemon);
+                await unitOfWork.SaveChangesAsync();
+                await unitOfWork.CommitTransactionAsync();
+
+                // Construir mensaje con información de subida de nivel
+                string resultMessage = battleResult.Victory
+                    ? $"🎉 Victory! {myPokemon.Pokemon.Name} defeated {battleResult.OpponentName}!"
+                    : $"😞 Defeat! {battleResult.OpponentName} defeated {myPokemon.Pokemon.Name}.";
+
+                resultMessage += $"\n💫 {myPokemon.Pokemon.Name} gained {battleResult.ExperienceGained} experience points!";
+
+                if (leveledUp)
+                {
+                    int levelsGained = newLevel - previousLevel;
+                    resultMessage += $"\n🆙 LEVEL UP! {myPokemon.Pokemon.Name} reached level {newLevel}!";
+                    if (levelsGained > 1)
+                    {
+                        resultMessage += $" (+{levelsGained} levels!)";
+                    }
+                }
+
+                resultMessage += $"\n📊 Total experience: {myPokemon.Experience} | Level: {myPokemon.Level}";
+
+                // Mostrar experiencia necesaria para el próximo nivel
+                int expForNextLevel = GetExperienceForLevel(myPokemon.Level + 1);
+                int expNeeded = expForNextLevel - myPokemon.Experience;
+                if (expNeeded > 0)
+                {
+                    resultMessage += $"\n📈 Next level in: {expNeeded} exp";
+                }
+
+                return ApiResponse<string>.Ok(resultMessage);
+            }
+            catch (Exception ex)
+            {
+                await unitOfWork.RollbackTransactionAsync();
+                logger.LogError(ex, "Error processing battle result");
+                return ApiResponse<string>.Fail("An error occurred while processing the battle result");
             }
         }
 
@@ -187,9 +425,6 @@ namespace PokedexCore.Application.Services
             }
         }
 
-
-        
-
         private async Task<ValidationResult> ValidateRequestAsync(CatchPokemonRequest request)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.Name))
@@ -243,6 +478,55 @@ namespace PokedexCore.Application.Services
             };
         }
 
+        private int GetExperienceForLevel(int level)
+        {
+            if (level <= 1) return 0;
+            if (level == 2) return 100;
+            if (level == 3) return 250;
+            if (level == 4) return 450;
+            if (level == 5) return 700;
+            if (level == 6) return 1000;
+            if (level == 7) return 1350;
+            if (level == 8) return 1750;
+            if (level == 9) return 2200;
+            if (level == 10) return 2700;
+            if (level == 11) return 3250;
+
+            // Fórmula para niveles superiores: más experiencia requerida por nivel
+            return (level * level * 50) - 50;
+        }
+
+        private int CalculateLevelFromExperience(int experience)
+        {
+            // Sistema de niveles: cada nivel requiere más experiencia
+            // Nivel 1: 0 exp
+            // Nivel 2: 100 exp
+            // Nivel 3: 250 exp (150 adicionales)
+            // Nivel 4: 450 exp (200 adicionales)
+            // Nivel 5: 700 exp (250 adicionales)
+            // Y así sucesivamente...
+
+            if (experience < 100) return 1;
+            if (experience < 250) return 2;
+            if (experience < 450) return 3;
+            if (experience < 700) return 4;
+            if (experience < 1000) return 5;
+            if (experience < 1350) return 6;
+            if (experience < 1750) return 7;
+            if (experience < 2200) return 8;
+            if (experience < 2700) return 9;
+            if (experience < 3250) return 10;
+        
+            int level = 10;
+            while (GetExperienceForLevel(level + 1) <= experience)
+            {
+                level++;
+                if (level > 100) break;
+            }
+
+            return level;
+        }
+
         private class ValidationResult
         {
             public bool IsValid { get; init; }
@@ -266,6 +550,27 @@ namespace PokedexCore.Application.Services
 
             public static CaptureResult Failed(string message) =>
                 new() { Success = false, Message = message };
+        }
+
+        private class BattleValidationResult
+        {
+            public bool IsValid { get; init; }
+            public string ErrorMessage { get; init; }
+            public Trainer Trainer { get; init; }
+            public TrainerPokemons MyPokemon { get; init; }
+
+            public static BattleValidationResult Valid(Trainer trainer, TrainerPokemons myPokemon) =>
+                new() { IsValid = true, Trainer = trainer, MyPokemon = myPokemon };
+
+            public static BattleValidationResult Invalid(string errorMessage) =>
+                new() { IsValid = false, ErrorMessage = errorMessage };
+        }
+
+        private class BattleResult
+        {
+            public bool Victory { get; init; }
+            public int ExperienceGained { get; init; }
+            public string OpponentName { get; init; }
         }
     }
 }

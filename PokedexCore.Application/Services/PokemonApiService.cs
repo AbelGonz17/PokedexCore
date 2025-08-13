@@ -219,5 +219,48 @@ namespace PokedexCore.Application.Services
 
             return false;
         }
+
+        public async Task<string> GetNextEvolutionAsync(string currentPokemonName)
+        {
+            var speciesResponse = await httpClient.GetFromJsonAsync<dynamic>($"https://pokeapi.co/api/v2/pokemon-species/{currentPokemonName.ToLower()}");
+            if (speciesResponse == null) return null;
+
+            string evolutionChainUrl = speciesResponse["evolution_chain"]["url"];
+            var chainResponse = await httpClient.GetFromJsonAsync<dynamic>(evolutionChainUrl);
+            if (chainResponse == null) return null;
+
+            dynamic chain = chainResponse["chain"];
+
+            return FindNextEvolution(chain, currentPokemonName.ToLower());
+        }
+
+        private string FindNextEvolution(dynamic chainNode, string currentName)
+        {
+            var speciesName = ((string)chainNode["species"]["name"]).ToLower();
+
+            if (speciesName == currentName)
+            {
+                // Si el Pokémon actual tiene evoluciones
+                if (chainNode["evolves_to"] != null && chainNode["evolves_to"].Count > 0)
+                {
+                    return (string)chainNode["evolves_to"][0]["species"]["name"];
+                }
+                else
+                {
+                    // No tiene evolución
+                    return null;
+                }
+            }
+
+            foreach (var evo in chainNode["evolves_to"])
+            {
+                var result = FindNextEvolution(evo, currentName);
+                if (result != null)
+                    return result;
+            }
+
+            return null;
+        }
+
     }
 }

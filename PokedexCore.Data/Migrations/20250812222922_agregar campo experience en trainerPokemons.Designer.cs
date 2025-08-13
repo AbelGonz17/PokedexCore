@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PokedexCore.Data.Contex;
 
@@ -11,9 +12,11 @@ using PokedexCore.Data.Contex;
 namespace PokedexCore.Data.Migrations
 {
     [DbContext(typeof(PokedexDbContext))]
-    partial class PokedexDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250812222922_agregar campo experience en trainerPokemons")]
+    partial class agregarcampoexperienceentrainerPokemons
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -324,11 +327,16 @@ namespace PokedexCore.Data.Migrations
                     b.Property<int>("TrainerId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TrainerId1")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PokemonId");
 
                     b.HasIndex("TrainerId");
+
+                    b.HasIndex("TrainerId1");
 
                     b.ToTable("TrainerPokemons");
                 });
@@ -406,8 +414,12 @@ namespace PokedexCore.Data.Migrations
                     b.HasOne("PokedexCore.Domain.Entities.Trainer", "Trainer")
                         .WithMany("Pokemons")
                         .HasForeignKey("TrainerId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("PokedexCore.Domain.Entities.Trainer", null)
+                        .WithMany("_pokemons")
+                        .HasForeignKey("TrainerId1");
 
                     b.Navigation("Pokemon");
 
@@ -417,6 +429,8 @@ namespace PokedexCore.Data.Migrations
             modelBuilder.Entity("PokedexCore.Domain.Entities.Trainer", b =>
                 {
                     b.Navigation("Pokemons");
+
+                    b.Navigation("_pokemons");
                 });
 #pragma warning restore 612, 618
         }

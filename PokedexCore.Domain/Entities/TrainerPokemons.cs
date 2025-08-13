@@ -12,8 +12,10 @@ namespace PokedexCore.Domain.Entities
         public int Id {  get; set; }
 
         public int TrainerId { get; set; }
+        public Trainer Trainer { get; set; }
 
         public int PokemonId { get; set; }
+        public Pokemon Pokemon { get; set; }
 
         public int Quantity { get; set; }
 
@@ -23,7 +25,7 @@ namespace PokedexCore.Domain.Entities
 
         public DateTime LastCaptureDate { get; set; }
 
-        public Trainer Trainer { get; set; }
-        public Pokemon Pokemon { get; set; }
+        public int Experience { get; set; } = 0;
+
     }
 }

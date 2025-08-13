@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PokedexCore.Data.Contex;
 
@@ -11,9 +12,11 @@ using PokedexCore.Data.Contex;
 namespace PokedexCore.Data.Migrations
 {
     [DbContext(typeof(PokedexDbContext))]
-    partial class PokedexDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250812223851_CAMBIOSTrainer")]
+    partial class CAMBIOSTrainer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
