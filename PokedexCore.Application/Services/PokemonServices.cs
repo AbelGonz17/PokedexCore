@@ -202,6 +202,5 @@ namespace PokedexCore.Application.Services
             };
         }
 
-        //prueba de nueva rama
     }
 }
