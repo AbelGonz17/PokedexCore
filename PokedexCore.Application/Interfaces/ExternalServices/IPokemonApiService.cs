@@ -11,11 +11,12 @@ namespace PokedexCore.Application.Interfaces.ExternalServices
     public interface IPokemonApiService
     {
         Task<bool> PokemonExistAsync(string pokemonName);
-        Task<PokemonApiData> GetPokemonDataAsync(string PokemonName);
-        Task<bool> IsValidEvolutionAsync(string currentName, string evolvedFormName);
+        Task<PokemonApiData> GetPokemonDataAsync(string PokemonName);       
         Task<List<PokemonListResponse>> GetAllPokemonsAsync(int limit , int offset);
         Task<int> GetPokemonTotalCountAsync();
         Task<List<PokemonListResponse>> GetPokemonsByTypeAsync(string type, int limit, int offset);
         Task<ApiResponse<PokemonDetailResponse>> GetPokemonByNameAsync(string name);
+        Task<string> GetNextEvolutionAsync(string currentPokemonName);
+        Task<int> GetTotalEvolutionsAsync(string currentPokemonName);
     }
 }

@@ -190,69 +190,85 @@ namespace PokedexCore.Application.Services
             };
         }
 
-        public async Task<bool> IsValidEvolutionAsync(string currentName, string evolvedFormName)
-        {
-            var speciesResponse = await httpClient.GetFromJsonAsync<dynamic>($"https://pokeapi.co/api/v2/pokemon-species/{currentName.ToLower()}");
-            if (speciesResponse == null) return false;
-
-            string evolutionChainUrl = speciesResponse["evolution_chain"]["url"];
-            var chainResponse = await httpClient.GetFromJsonAsync<dynamic>(evolutionChainUrl);
-            if (chainResponse == null) return false;
-
-            dynamic chain = chainResponse["chain"];
-            return SearchEvolutionChain(chain, evolvedFormName.ToLower());
-
-
-        }
-
-        private bool SearchEvolutionChain(dynamic chain, string evolvedForm)
-        {
-            var speciesName = ((string)chain["species"]["name"]).ToLower();
-            if (speciesName == evolvedForm)
-                return true;
-
-            foreach (var evo in chain["evolves_to"])
-            {
-                if (SearchEvolutionChain(evo, evolvedForm))
-                    return true;
-            }
-
-            return false;
-        }
-
         public async Task<string> GetNextEvolutionAsync(string currentPokemonName)
         {
-            var speciesResponse = await httpClient.GetFromJsonAsync<dynamic>($"https://pokeapi.co/api/v2/pokemon-species/{currentPokemonName.ToLower()}");
-            if (speciesResponse == null) return null;
+            if (string.IsNullOrWhiteSpace(currentPokemonName))
+                return null;
 
-            string evolutionChainUrl = speciesResponse["evolution_chain"]["url"];
-            var chainResponse = await httpClient.GetFromJsonAsync<dynamic>(evolutionChainUrl);
-            if (chainResponse == null) return null;
+            JsonElement speciesResponse;
 
-            dynamic chain = chainResponse["chain"];
+            try
+            {
+                speciesResponse = await httpClient.GetFromJsonAsync<JsonElement>(
+                    $"https://pokeapi.co/api/v2/pokemon-species/{currentPokemonName.ToLower()}");
+            }
+            catch (HttpRequestException)
+            {
+                // Pokémon no encontrado
+                return null;
+            }
+
+            if (!speciesResponse.TryGetProperty("evolution_chain", out var evolutionChainElement) ||
+                !evolutionChainElement.TryGetProperty("url", out var urlElement))
+            {
+                return null;
+            }
+
+            string evolutionChainUrl = urlElement.GetString();
+
+            var chainResponse = await httpClient.GetFromJsonAsync<JsonElement>(evolutionChainUrl);
+            if (chainResponse.ValueKind == JsonValueKind.Undefined || chainResponse.ValueKind == JsonValueKind.Null)
+                return null;
+
+            var chain = chainResponse.GetProperty("chain");
 
             return FindNextEvolution(chain, currentPokemonName.ToLower());
         }
 
-        private string FindNextEvolution(dynamic chainNode, string currentName)
+        public async Task<int> GetTotalEvolutionsAsync(string currentPokemonName)
         {
-            var speciesName = ((string)chainNode["species"]["name"]).ToLower();
+            JsonElement speciesResponse;
+
+            try
+            {
+                speciesResponse = await httpClient.GetFromJsonAsync<JsonElement>(
+                    $"https://pokeapi.co/api/v2/pokemon-species/{currentPokemonName.ToLower()}");
+            }
+            catch (HttpRequestException)
+            {
+                return 0;
+            }
+
+            if (!speciesResponse.TryGetProperty("evolution_chain", out var evolutionChainElement) ||
+                !evolutionChainElement.TryGetProperty("url", out var urlElement))
+            {
+                return 0;
+            }
+
+            string evolutionChainUrl = urlElement.GetString();
+
+            var chainResponse = await httpClient.GetFromJsonAsync<JsonElement>(evolutionChainUrl);
+            if (chainResponse.ValueKind == JsonValueKind.Undefined || chainResponse.ValueKind == JsonValueKind.Null)
+                return 0;
+
+            var chain = chainResponse.GetProperty("chain");
+
+            return CountEvolutions(chain);
+        }
+
+        private string FindNextEvolution(JsonElement chainNode, string currentName)
+        {
+            var speciesName = chainNode.GetProperty("species").GetProperty("name").GetString().ToLower();
 
             if (speciesName == currentName)
             {
-                // Si el Pokémon actual tiene evoluciones
-                if (chainNode["evolves_to"] != null && chainNode["evolves_to"].Count > 0)
-                {
-                    return (string)chainNode["evolves_to"][0]["species"]["name"];
-                }
-                else
-                {
-                    // No tiene evolución
-                    return null;
-                }
+                var evolvesTo = chainNode.GetProperty("evolves_to");
+                if (evolvesTo.GetArrayLength() > 0)
+                    return evolvesTo[0].GetProperty("species").GetProperty("name").GetString();
+                return null;
             }
 
-            foreach (var evo in chainNode["evolves_to"])
+            foreach (var evo in chainNode.GetProperty("evolves_to").EnumerateArray())
             {
                 var result = FindNextEvolution(evo, currentName);
                 if (result != null)
@@ -262,5 +278,22 @@ namespace PokedexCore.Application.Services
             return null;
         }
 
+        private int CountEvolutions(JsonElement chainNode)
+        {
+            int count = 0;
+            var evolvesTo = chainNode.GetProperty("evolves_to");
+
+            if (evolvesTo.GetArrayLength() > 0)
+            {
+                count += evolvesTo.GetArrayLength();
+                foreach (var evo in evolvesTo.EnumerateArray())
+                {
+                    count += CountEvolutions(evo);
+                }
+            }
+
+            return count;
+        }
     }
 }
+

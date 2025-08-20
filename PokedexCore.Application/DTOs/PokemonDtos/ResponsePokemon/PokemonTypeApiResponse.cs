@@ -22,3 +22,4 @@ namespace PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon
         public string Url { get; set; }
     }
 }
+

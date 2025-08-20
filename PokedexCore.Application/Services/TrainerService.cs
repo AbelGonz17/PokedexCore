@@ -154,6 +154,12 @@ namespace PokedexCore.Application.Services
                     return ApiResponse<string>.Fail("You don't have that Pokémon.");
                 }
 
+                if (request.Quantity > trainerPokemon.Quantity)
+                {
+                    await unitOfWork.RollbackTransactionAsync();
+                    return ApiResponse<string>.Fail($"You only have {trainerPokemon.Quantity} {request.Name}(s). You cannot release {request.Quantity}.");
+                }
+
                 // Lógica para liberar
                 if (trainerPokemon.Quantity > request.Quantity)
                 {
@@ -429,6 +435,12 @@ namespace PokedexCore.Application.Services
         {
             if (request == null || string.IsNullOrWhiteSpace(request.Name))
                 return ValidationResult.Invalid("Pokemon name is required");
+
+            var basePokemon = await unitOfWork.Pokemon.GetByConditionAsync(p => p.Name == request.Name);
+            if (basePokemon == null)
+            {                
+                return ValidationResult.Invalid("This Pokémon species does not exist.");
+            }
 
             var trainerId = currentUser.GetUserId();
             if (trainerId == 0)

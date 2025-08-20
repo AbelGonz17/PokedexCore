@@ -11,6 +11,7 @@ using PokedexCore.Domain.Enums;
 using PokedexCore.Domain.Exceptions;
 using PokedexCore.Domain.Interfaces;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace PokedexCore.Application.Services
@@ -136,6 +137,22 @@ namespace PokedexCore.Application.Services
             return $"Pokémon '{pokemon.Name}' deleted successfully.";
         }
 
+        public async Task<ApiResponse<string>> GetEvolutionInfoAsync(GetEvolutionRequest getEvolutionRequest)
+        {
+            if (string.IsNullOrWhiteSpace(getEvolutionRequest.PokemonName))
+                return ApiResponse<string>.Fail("Pokemon name is required.");
+
+            var nextEvolution = await pokemonApiService.GetNextEvolutionAsync(getEvolutionRequest.PokemonName);
+            var totalEvolutions = await pokemonApiService.GetTotalEvolutionsAsync(getEvolutionRequest.PokemonName);
+
+            if (nextEvolution == null)
+                return ApiResponse<string>.Fail($"'{getEvolutionRequest.PokemonName}' has no further evolutions or does not exist.");
+
+            return ApiResponse<string>.Ok(
+                $"The next evolution of {getEvolutionRequest.PokemonName} is {nextEvolution}. This Pokémon has {totalEvolutions} evolution(s) in total."
+            );
+        }
+
         public async Task LevelUpAsync(int pokemonId)
         {
             var pokemon = await unitOfWork.Pokemon.GetByAsyncId(pokemonId);
@@ -150,30 +167,6 @@ namespace PokedexCore.Application.Services
             {
                 await eventBus.Publish(domainEvent);
             }
-
-            pokemon.ClearDomainEvents();
-        }
-
-        public async Task EvolveAsync(int pokemonId, string evolvedForm)
-        {
-            var pokemon = await unitOfWork.Pokemon.GetByAsyncId(pokemonId);
-            if (pokemon == null)
-                throw new DomainException("Pokémon not found");
-
-            var exists = await pokemonApiService.PokemonExistAsync(evolvedForm);
-            if (!exists)
-                throw new DomainException($"The Pokémon '{evolvedForm}' does not exist in PokéAPI.");
-
-            var isValid = await pokemonApiService.IsValidEvolutionAsync(pokemon.Name, evolvedForm);
-            if (!isValid)
-                throw new DomainException($"'{evolvedForm}' is not a valid evolution of '{pokemon.Name}'.");
-
-            pokemon.Evolve(evolvedForm, pokemon.MainType);
-
-            await unitOfWork.SaveChangesAsync();
-
-            foreach (var domainEvent in pokemon.DomainEvents)
-                await eventBus.Publish(domainEvent);
 
             pokemon.ClearDomainEvents();
         }

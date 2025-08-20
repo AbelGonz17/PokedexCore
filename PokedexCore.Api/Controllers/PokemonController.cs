@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using PokedexCore.Application.DTOs.PokemonDtos.RequestPokemon;
 using PokedexCore.Application.Interfaces;
 
 namespace PokedexCore.Api.Controllers
@@ -34,6 +35,18 @@ namespace PokedexCore.Api.Controllers
             var response = await pokemonServices.GetByNameFromExternalAsync(name);
             if (!response.Success)
                 return NotFound(response);
+
+            return Ok(response);
+        }
+
+        [HttpGet("evolution", Name = "GetEvolutionPokemon")]
+        public async Task<IActionResult> GetEvolutionPokemon([FromQuery] GetEvolutionRequest getEvolutionRequest)
+        {
+            var response = await pokemonServices.GetEvolutionInfoAsync(getEvolutionRequest);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
 
             return Ok(response);
         }

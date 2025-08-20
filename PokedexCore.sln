@@ -12,9 +12,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Domain", "Domain", "{35D2702D-D4F4-4D2C-93F4-3B137D689B63}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data", "Data", "{EBF35FA3-DD25-4C5E-8B8C-CAB3264CEFB2}"
-	ProjectSection(SolutionItems) = preProject
-		PokedexCore.Application\Services\PokemonServices.cs = PokedexCore.Application\Services\PokemonServices.cs
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PokedexCore.Domain", "PokedexCore.Domain\PokedexCore.Domain.csproj", "{217BEE21-0642-46FF-A7A3-5DFE1DD0DAB7}"
 EndProject

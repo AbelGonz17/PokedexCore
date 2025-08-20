@@ -10,4 +10,8 @@ namespace PokedexCore.Application.DTOs.TrainerDtos.RequestTrainer
     {
         public string Name { get; set; }
     }
+
+    //una idea que me surge es que como en catch y
+    //en battle pido el nombre, utilizar un solo request para los dos
+
 }
