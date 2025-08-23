@@ -17,6 +17,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices.Marshalling;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace PokedexCore.Application.Services
@@ -84,7 +85,8 @@ namespace PokedexCore.Application.Services
                     Name = tp.Pokemon.Name,
                     MainType = tp.Pokemon.MainType,
                     Level = tp.Level,
-                    Quantity = tp.Quantity
+                    Quantity = tp.Quantity,
+                    Exp = tp.Experience                
                 }).ToList()
             };
 
@@ -95,20 +97,23 @@ namespace PokedexCore.Application.Services
         {
             try
             {
-                // Validaciones iniciales
+                // 1. Validaciones iniciales
                 var validationResult = await ValidateRequestAsync(request);
                 if (!validationResult.IsValid)
                     return ApiResponse<string>.Fail(validationResult.ErrorMessage);
 
                 var trainer = validationResult.Trainer;
 
-                // Simulación de captura
+                // 2. Simulación de captura
                 var captureResult = await SimulatePokemonCaptureAsync(request.Name, trainer.Rank);
                 if (!captureResult.Success)
                     return ApiResponse<string>.Fail(captureResult.Message);
 
-                // Captura exitosa - procesar en base de datos
-                return await ProcessSuccessfulCaptureAsync(request.Name, trainer);
+                // 3. Determinar nivel inicial según evolución
+                int initialLevel = await GetInitialLevelForPokemonAsync(request.Name);
+
+                // 4. Procesar captura en base de datos
+                return await ProcessSuccessfulCaptureAsync(request.Name, trainer, initialLevel);
             }
             catch (Exception ex)
             {
@@ -229,8 +234,7 @@ namespace PokedexCore.Application.Services
             if (trainer == null)
                 return BattleValidationResult.Invalid("Trainer not found");
 
-            // Verificar que el trainer tenga ese Pokémon
-            var basePokemon = await unitOfWork.Pokemon.GetByConditionAsync(p => p.Name == request.PokemonName);
+            var basePokemon = await pokemonApiService.GetPokemonDataAsync(request.PokemonName);
             if (basePokemon == null)
                 return BattleValidationResult.Invalid("This Pokémon species does not exist");
 
@@ -362,7 +366,7 @@ namespace PokedexCore.Application.Services
             }
         }
 
-        private async Task<ApiResponse<string>> ProcessSuccessfulCaptureAsync(string pokemonName, Trainer trainer)
+        private async Task<ApiResponse<string>> ProcessSuccessfulCaptureAsync(string pokemonName, Trainer trainer, int initialLevel)
         {
             await unitOfWork.BeginTransactionAsync();
             try
@@ -383,7 +387,7 @@ namespace PokedexCore.Application.Services
                         pokemonApiResult.Data.Name,
                         pokemonApiResult.Data.MainType ?? "Unknown",
                         pokemonApiResult.Data.Region ?? "Unknown",
-                        DateTime.UtcNow,
+                        pokemonApiResult.Data.CaptureDate,
                         pokemonApiResult.Data.IsShiny,
                         trainer
                     );
@@ -407,10 +411,10 @@ namespace PokedexCore.Application.Services
                     {
                         TrainerId = trainer.Id,
                         PokemonId = basePokemon.Id,
-                        Level = 1,
+                        Level = initialLevel,
                         Quantity = 1,
                         IsShiny = pokemonApiResult.Data.IsShiny,
-                        LastCaptureDate = DateTime.UtcNow,
+                        LastCaptureDate = basePokemon.CaptureDate,
                     };
                     await unitOfWork.TrainerPokemons.AddAsync(trainerPokemon);
                 }
@@ -436,7 +440,7 @@ namespace PokedexCore.Application.Services
             if (request == null || string.IsNullOrWhiteSpace(request.Name))
                 return ValidationResult.Invalid("Pokemon name is required");
 
-            var basePokemon = await unitOfWork.Pokemon.GetByConditionAsync(p => p.Name == request.Name);
+            var basePokemon = await pokemonApiService.GetPokemonDataAsync(request.Name.ToLower());
             if (basePokemon == null)
             {                
                 return ValidationResult.Invalid("This Pokémon species does not exist.");
@@ -506,6 +510,15 @@ namespace PokedexCore.Application.Services
 
             // Fórmula para niveles superiores: más experiencia requerida por nivel
             return (level * level * 50) - 50;
+        }
+
+        private async Task<int> GetInitialLevelForPokemonAsync(string pokemonName)
+        {
+            // Usa el método que ya existe para determinar la etapa y asignar nivel
+            int initialLevel = await pokemonApiService.GetEvolutionLevelRequirementAsync(pokemonName, null);
+
+            // Por si acaso devuelve algo inválido, aseguramos mínimo 0
+            return initialLevel < 0 ? 0 : initialLevel;
         }
 
         private int CalculateLevelFromExperience(int experience)

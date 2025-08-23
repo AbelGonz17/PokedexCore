@@ -80,6 +80,18 @@ namespace PokedexCore.Application.Services
             try
             {
                 var data = await pokemonApiService.GetPokemonByNameAsync(name);
+           
+                if (data == null || data.Data == null)
+                {
+                    return ApiResponse<PokemonDetailResponse>.Fail($"No Pokémon found with the name '{name}'.");
+                }
+           
+                if (!string.Equals(data.Data.Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return ApiResponse<PokemonDetailResponse>.Fail($"'{name}' is not a valid Pokémon name.");
+                }
+
+                var level = await pokemonApiService.GetEvolutionLevelRequirementAsync(data.Data.Name, data.Data.Name);
 
                 var result = new PokemonDetailResponse
                 {
@@ -87,8 +99,8 @@ namespace PokedexCore.Application.Services
                     Name = data.Data.Name,
                     MainType = data.Data.MainType,
                     Region = "Unknown",
-                    CaptureDate = DateTime.UtcNow,
-                    Level = 1,
+                    CaptureDate = data.Data.CaptureDate,
+                    Level = level,
                     IsShiny = false,
                     Status = PokemonStatus.Active,
                     Trainer = null
@@ -96,35 +108,49 @@ namespace PokedexCore.Application.Services
 
                 return ApiResponse<PokemonDetailResponse>.Ok(result);
             }
-            catch(DomainException ex)
+            catch (DomainException ex)
             {
                 return ApiResponse<PokemonDetailResponse>.Fail(ex.Message);
             }
-            catch (Exception )
+            catch (HttpRequestException httpEx) when (httpEx.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                return ApiResponse<PokemonDetailResponse>.Fail("An unexpected error ocurred while fetching data from PokeAPI.");
+                // Si la API externa responde 404
+                return ApiResponse<PokemonDetailResponse>.Fail($"No Pokémon found with the name '{name}'.");
+            }
+            catch (Exception)
+            {
+                return ApiResponse<PokemonDetailResponse>.Fail("An unexpected error occurred while fetching data from PokeAPI.");
+            }
+        }
+
+        public async Task<ApiResponse<string>> GetEvolutionInfoAsync(GetEvolutionRequest getEvolutionRequest)
+        {
+            if (string.IsNullOrWhiteSpace(getEvolutionRequest.PokemonName))
+                return ApiResponse<string>.Fail("Pokemon name is required.");
+
+            var nextEvolution = await pokemonApiService.GetNextEvolutionAsync(getEvolutionRequest.PokemonName);
+            var totalEvolutions = await pokemonApiService.GetTotalEvolutionsAsync(getEvolutionRequest.PokemonName);
+
+            if (totalEvolutions == 0)
+            {
+                // Significa que el Pokémon no existe en la PokeAPI
+                return ApiResponse<string>.Fail($"The Pokémon '{getEvolutionRequest.PokemonName}' does not exist.");
             }
 
+            if (string.IsNullOrEmpty(nextEvolution))
+            {
+                // Existe pero no tiene más evoluciones
+                return ApiResponse<string>.Ok(
+                    $"{getEvolutionRequest.PokemonName} has no further evolutions. Total evolutions in its chain: {totalEvolutions}."
+                );
+            }
+
+            // Existe y sí tiene siguiente evolución
+            return ApiResponse<string>.Ok(
+                $"The next evolution of {getEvolutionRequest.PokemonName} is {nextEvolution}. This Pokémon has {totalEvolutions} evolution(s) in total."
+            );
         }
 
-        public async Task<PokemonResponse> CreateAsync(CreatePokemonRequest request)
-        {
-            var pokemonExist = await pokemonApiService.PokemonExistAsync(request.Name);
-            if (!pokemonExist)
-                throw new DomainException($"Pokemon '{request.Name}' does not exist");
-
-            var trainer = await unitOfWork.Trainer.GetByAsyncId(request.TrainerId);
-            if (trainer == null)
-                throw new DomainException("Trainer not found");
-
-            // Resto de la lógica...
-            var pokemon = new Pokemon(request.Name, request.MainType, request.Region, request.TrainerId);
-            await unitOfWork.Pokemon.AddAsync(pokemon);
-            await unitOfWork.SaveChangesAsync();
-
-            return MapToResponse(pokemon);
-        }
-      
         public async Task<string> Delete(int id)
         {
             var pokemon = await unitOfWork.Pokemon.GetByAsyncId(id);
@@ -136,71 +162,5 @@ namespace PokedexCore.Application.Services
 
             return $"Pokémon '{pokemon.Name}' deleted successfully.";
         }
-
-        public async Task<ApiResponse<string>> GetEvolutionInfoAsync(GetEvolutionRequest getEvolutionRequest)
-        {
-            if (string.IsNullOrWhiteSpace(getEvolutionRequest.PokemonName))
-                return ApiResponse<string>.Fail("Pokemon name is required.");
-
-            var nextEvolution = await pokemonApiService.GetNextEvolutionAsync(getEvolutionRequest.PokemonName);
-            var totalEvolutions = await pokemonApiService.GetTotalEvolutionsAsync(getEvolutionRequest.PokemonName);
-
-            if (nextEvolution == null)
-                return ApiResponse<string>.Fail($"'{getEvolutionRequest.PokemonName}' has no further evolutions or does not exist.");
-
-            return ApiResponse<string>.Ok(
-                $"The next evolution of {getEvolutionRequest.PokemonName} is {nextEvolution}. This Pokémon has {totalEvolutions} evolution(s) in total."
-            );
-        }
-
-        public async Task LevelUpAsync(int pokemonId)
-        {
-            var pokemon = await unitOfWork.Pokemon.GetByAsyncId(pokemonId);
-            if (pokemon == null)
-                throw new DomainException("Pokemon not found");
-
-            pokemon.levelUP();
-
-            await unitOfWork.SaveChangesAsync();
-
-            foreach (var domainEvent in pokemon.DomainEvents)
-            {
-                await eventBus.Publish(domainEvent);
-            }
-
-            pokemon.ClearDomainEvents();
-        }
-
-        public async Task CheckIfCanBattleAsync(int pokemonId)
-        {
-            var pokemon = await unitOfWork.Pokemon.GetByAsyncId(pokemonId);
-            if (pokemon == null)
-                throw new DomainException("Pokémon not found");
-
-            pokemon.CanBattle();
-
-            await unitOfWork.SaveChangesAsync(); // por si quieres dejar un registro
-
-            foreach (var domainEvent in pokemon.DomainEvents)
-                await eventBus.Publish(domainEvent);
-
-            pokemon.ClearDomainEvents();
-        }
-
-        private PokemonResponse MapToResponse(Pokemon pokemon)
-        {
-            return new PokemonResponse
-            {
-                Id = pokemon.Id,
-                Name = pokemon.Name,
-                MainType = pokemon.MainType,
-                Region = pokemon.Region,
-                CaptureDate = pokemon.CaptureDate,
-                Level = pokemon.Level,
-                IsShiny = pokemon.IsShiny,
-                Status = pokemon.Status.ToString()
-            };
-        }
-
     }
 }

@@ -83,7 +83,7 @@ namespace PokedexCore.Application.Services
                 Name = data.Name,
                 MainType = data.Types.FirstOrDefault() ?? "unknown",
                 Region = "Unknown",
-                CaptureDate = DateTime.UtcNow,
+                CaptureDate = DateTime.UtcNow.Date,
                 Level = 1,
                 IsShiny = false,
                 Status = PokemonStatus.Active,
@@ -170,7 +170,7 @@ namespace PokedexCore.Application.Services
             var response = await httpClient.GetAsync($"{BASE_URL}{pokemonName.ToLower()}");
 
             if (!response.IsSuccessStatusCode)
-                throw new DomainException($"Pokemon '{pokemonName}' not found in PokeApi");
+                return null;
 
             var json = await response.Content.ReadAsStringAsync();
 
@@ -187,6 +187,7 @@ namespace PokedexCore.Application.Services
                 Height = pokemonApiResponse.Height,
                 Weight = pokemonApiResponse.Weight,
                 Id = pokemonApiResponse.Id
+                
             };
         }
 
@@ -254,6 +255,64 @@ namespace PokedexCore.Application.Services
             var chain = chainResponse.GetProperty("chain");
 
             return CountEvolutions(chain);
+        }
+
+        public async Task<int> GetEvolutionLevelRequirementAsync(string currentPokemonName, string nextEvolutionName)
+        {
+            // Traemos la cadena de evoluciones desde la API
+            var speciesResponse = await httpClient.GetFromJsonAsync<JsonElement>(
+                $"https://pokeapi.co/api/v2/pokemon-species/{currentPokemonName.ToLower()}"
+            );
+
+            if (speciesResponse.ValueKind == JsonValueKind.Undefined || speciesResponse.ValueKind == JsonValueKind.Null)
+                return 0;
+
+            if (!speciesResponse.TryGetProperty("evolution_chain", out var evolutionChainElement) ||
+                !evolutionChainElement.TryGetProperty("url", out var urlElement))
+                return 0;
+
+            string evolutionChainUrl = urlElement.GetString();
+
+            var chainResponse = await httpClient.GetFromJsonAsync<JsonElement>(evolutionChainUrl);
+            if (chainResponse.ValueKind == JsonValueKind.Undefined || chainResponse.ValueKind == JsonValueKind.Null)
+                return 0;
+
+            var chain = chainResponse.GetProperty("chain");
+
+            // Función recursiva para buscar etapa
+            int stage = GetEvolutionStage(chain, currentPokemonName.ToLower(), 1);
+
+            // Asignamos nivel según la etapa
+            return stage switch
+            {
+                1 => 0,   // primera etapa
+                2 => 16,  // segunda etapa
+                3 => 36,  // tercera etapa
+                _ => 0
+            };
+        }
+
+        private int GetEvolutionStage(JsonElement chainNode, string currentName, int currentStage)
+        {
+            // obtener el nombre de la especie
+            var speciesName = chainNode
+                .GetProperty("species")
+                .GetProperty("name")
+                .GetString()
+                .ToLower();
+
+            if (speciesName == currentName)
+                return currentStage;
+
+            // recorrer el array de "evolves_to"
+            foreach (var evo in chainNode.GetProperty("evolves_to").EnumerateArray())
+            {
+                int stage = GetEvolutionStage(evo, currentName, currentStage + 1);
+                if (stage > 0)
+                    return stage;
+            }
+
+            return 0;
         }
 
         private string FindNextEvolution(JsonElement chainNode, string currentName)

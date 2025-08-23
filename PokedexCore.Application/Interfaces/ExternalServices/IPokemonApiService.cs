@@ -18,5 +18,6 @@ namespace PokedexCore.Application.Interfaces.ExternalServices
         Task<ApiResponse<PokemonDetailResponse>> GetPokemonByNameAsync(string name);
         Task<string> GetNextEvolutionAsync(string currentPokemonName);
         Task<int> GetTotalEvolutionsAsync(string currentPokemonName);
+        Task<int> GetEvolutionLevelRequirementAsync(string currentPokemonName, string nextEvolutionName);
     }
 }

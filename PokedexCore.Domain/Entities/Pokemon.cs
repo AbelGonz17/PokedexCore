@@ -40,13 +40,13 @@ namespace PokedexCore.Domain.Entities
 
         private Pokemon() { }
 
-        public Pokemon(string name, string mainType, string region, int trainerId)
+        public Pokemon(string name, string mainType, string region, int trainerId,DateTime captureDate)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             MainType = MainType ?? throw new ArgumentNullException(nameof(mainType));
             Region = region ?? throw new ArgumentNullException(nameof(region));
             TrainerId = trainerId;
-            CaptureDate = DateTime.UtcNow;
+            CaptureDate = captureDate;
             Level = 1;
             Status = PokemonStatus.Wild;
         }
@@ -67,7 +67,6 @@ namespace PokedexCore.Domain.Entities
                 Level = 1
             };
         }
-
 
         public void levelUP()
         {

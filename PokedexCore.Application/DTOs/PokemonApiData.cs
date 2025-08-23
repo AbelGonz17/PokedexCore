@@ -12,6 +12,8 @@ namespace PokedexCore.Application.DTOs
 
         public string Name { get; set; }
 
+        public DateTime CaptureDate { get; set; }
+
         public List<string> Types { get; set; }
 
         public string SpriteUrl { get; set; }

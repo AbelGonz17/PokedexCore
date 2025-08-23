@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PokedexCore.Application.DTOs.TrainerDtos.RequestTrainer;
 using PokedexCore.Application.Interfaces;
 using PokedexCore.Data.Securtiry;
@@ -88,5 +89,7 @@ namespace PokedexCore.Api.Controllers
 
             return BadRequest(result);
         }
+
+       
     }
 }

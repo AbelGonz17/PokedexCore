@@ -17,5 +17,7 @@ namespace PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon
         public int Level { get; set; } = 1;
 
         public int Quantity { get; set; }
+
+        public int Exp { get; set; }
     }
 }

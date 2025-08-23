@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 using PokedexCore.Application.DTOs.PokemonDtos.RequestPokemon;
 using PokedexCore.Application.Interfaces;
 
@@ -7,6 +10,7 @@ namespace PokedexCore.Api.Controllers
 {
     [ApiController]
     [Route("api/Pokemon")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class PokemonController : ControllerBase
     {
         private readonly IPokemonServices pokemonServices;
@@ -17,6 +21,7 @@ namespace PokedexCore.Api.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         [OutputCache(PolicyName = "PokemonCache")]
         public async Task<IActionResult> GetAllPokemons([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? type = null)
         {
@@ -29,6 +34,7 @@ namespace PokedexCore.Api.Controllers
         }
 
         [HttpGet("{name}", Name = "GetByName")]
+        [AllowAnonymous]
         [OutputCache(PolicyName = "PokemonCacheByName")]
         public async Task<IActionResult> GetPokemonsFromName(string name)
         {
@@ -40,6 +46,7 @@ namespace PokedexCore.Api.Controllers
         }
 
         [HttpGet("evolution", Name = "GetEvolutionPokemon")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetEvolutionPokemon([FromQuery] GetEvolutionRequest getEvolutionRequest)
         {
             var response = await pokemonServices.GetEvolutionInfoAsync(getEvolutionRequest);

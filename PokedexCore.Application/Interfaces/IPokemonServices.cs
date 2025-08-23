@@ -7,12 +7,9 @@ namespace PokedexCore.Application.Interfaces
 {
     public interface IPokemonServices
     {
-        Task CheckIfCanBattleAsync(int pokemonId);
-        Task<PokemonResponse> CreateAsync(CreatePokemonRequest request);
         Task<string> Delete(int id);     
         Task<ApiResponse<PagedResponse<PokemonListResponse>>> GetAllAsync(int page , int pageSize, string? type = null);      
         Task<ApiResponse<PokemonDetailResponse>> GetByNameFromExternalAsync(string name);
-        Task<ApiResponse<string>> GetEvolutionInfoAsync(GetEvolutionRequest getEvolutionRequest);
-        Task LevelUpAsync(int pokemonId);
+        Task<ApiResponse<string>> GetEvolutionInfoAsync(GetEvolutionRequest getEvolutionRequest);    
     }
 }
