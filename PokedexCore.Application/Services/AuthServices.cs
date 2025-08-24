@@ -97,7 +97,7 @@ namespace PokedexCore.Application.Services
                             basePokemon = Pokemon.CreatePokemon(
                                 pokemonApiResult.Data.Name,
                                 pokemonApiResult.Data.MainType ?? "Unknown",
-                                pokemonApiResult.Data.Region ?? "Unknown",                         
+                                pokemonApiResult.Data.Region,                         
                                 DateTime.UtcNow,
                                 pokemonApiResult.Data.IsShiny,
                                 trainer,

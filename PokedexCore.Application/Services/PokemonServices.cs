@@ -98,7 +98,7 @@ namespace PokedexCore.Application.Services
                     Id = data.Data.Id,
                     Name = data.Data.Name,
                     MainType = data.Data.MainType,
-                    Region = "Unknown",
+                    Region = data.Data.Region,
                     CaptureDate = data.Data.CaptureDate,
                     Level = level,
                     IsShiny = false,

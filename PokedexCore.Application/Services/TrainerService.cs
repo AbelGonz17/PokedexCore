@@ -87,8 +87,8 @@ namespace PokedexCore.Application.Services
                     Level = tp.Level,
                     Quantity = tp.Quantity,
                     Exp = tp.Experience,
-                    SpriteUrl = tp.Pokemon.SpriteURL
-                    
+                    SpriteUrl = tp.Pokemon.SpriteURL,
+                    Region = tp.Pokemon.Region     
                 }).ToList()
             };
 

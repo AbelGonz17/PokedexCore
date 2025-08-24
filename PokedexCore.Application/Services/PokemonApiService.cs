@@ -51,7 +51,8 @@ namespace PokedexCore.Application.Services
                             Id = pokemonData.Id,
                             Name = pokemonData.Name,
                             MainType = pokemonData.Types.FirstOrDefault() ?? "unknown",  
-                            SpriteUrl = pokemonData.SpriteUrl
+                            SpriteUrl = pokemonData.SpriteUrl,
+                            Region = pokemonData.Region,              
                         };
                     }
                     catch
@@ -83,7 +84,7 @@ namespace PokedexCore.Application.Services
                 Id = data.Id,
                 Name = data.Name,
                 MainType = data.Types.FirstOrDefault() ?? "unknown",
-                Region = "Unknown",
+                Region = data.Region,
                 CaptureDate = DateTime.UtcNow.Date,
                 Level = 1,
                 IsShiny = false,
@@ -181,6 +182,8 @@ namespace PokedexCore.Application.Services
                 PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
             });
 
+            var region = await GetPokemonRegionAsync(pokemonName);
+
             return new PokemonApiData
             {
                 Name = pokemonApiResponse.Name,
@@ -188,8 +191,8 @@ namespace PokedexCore.Application.Services
                 SpriteUrl = pokemonApiResponse.Sprites.FrontDefault ?? "This pokemon has no photo",
                 Height = pokemonApiResponse.Height,
                 Weight = pokemonApiResponse.Weight,
-                Id = pokemonApiResponse.Id
-
+                Id = pokemonApiResponse.Id,
+                Region = region
             };
         }
 
@@ -355,6 +358,41 @@ namespace PokedexCore.Application.Services
 
             return count;
         }
+
+        private async Task<string> GetPokemonRegionAsync(string pokemonName)
+        {
+            string region = "Unknown";
+            try
+            {
+                var speciesResponse = await httpClient.GetFromJsonAsync<JsonElement>(
+                    $"https://pokeapi.co/api/v2/pokemon-species/{pokemonName.ToLower()}"
+                );
+
+                if (speciesResponse.TryGetProperty("generation", out var generation))
+                {
+                    var genName = generation.GetProperty("name").GetString();
+                    region = genName switch
+                    {
+                        "generation-i" => "Kanto",
+                        "generation-ii" => "Johto",
+                        "generation-iii" => "Hoenn",
+                        "generation-iv" => "Sinnoh",
+                        "generation-v" => "Unova",
+                        "generation-vi" => "Kalos",
+                        "generation-vii" => "Alola",
+                        "generation-viii" => "Galar",
+                        _ => "Unknown"
+                    };
+                }
+            }
+            catch
+            {
+                region = "Unknown";
+            }
+
+            return region;
+        }
+
     }
 }
 

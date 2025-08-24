@@ -20,6 +20,8 @@ namespace PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon
 
         public int Exp { get; set; }
 
+        public string Region { get; set; }
+
         public string SpriteUrl {  get; set; }
     }
 }
