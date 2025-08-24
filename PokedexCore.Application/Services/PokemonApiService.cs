@@ -50,7 +50,8 @@ namespace PokedexCore.Application.Services
                         {
                             Id = pokemonData.Id,
                             Name = pokemonData.Name,
-                            MainType = pokemonData.Types.FirstOrDefault() ?? "unknown",                            
+                            MainType = pokemonData.Types.FirstOrDefault() ?? "unknown",  
+                            SpriteUrl = pokemonData.SpriteUrl
                         };
                     }
                     catch
@@ -183,11 +184,11 @@ namespace PokedexCore.Application.Services
             {
                 Name = pokemonApiResponse.Name,
                 Types = pokemonApiResponse.Types.Select(t => t.Type.Name).ToList(),
-                SpriteUrl = pokemonApiResponse.Sprites.FrontDefault,
+                SpriteUrl = pokemonApiResponse.Sprites.FrontDefault ?? "This pokemon has no photo",
                 Height = pokemonApiResponse.Height,
                 Weight = pokemonApiResponse.Weight,
                 Id = pokemonApiResponse.Id
-                
+
             };
         }
 

@@ -19,5 +19,7 @@ namespace PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon
         public int Quantity { get; set; }
 
         public int Exp { get; set; }
+
+        public string SpriteUrl {  get; set; }
     }
 }
