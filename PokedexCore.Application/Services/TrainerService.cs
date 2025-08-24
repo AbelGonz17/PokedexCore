@@ -86,7 +86,9 @@ namespace PokedexCore.Application.Services
                     MainType = tp.Pokemon.MainType,
                     Level = tp.Level,
                     Quantity = tp.Quantity,
-                    Exp = tp.Experience                
+                    Exp = tp.Experience,
+                    SpriteUrl = tp.Pokemon.SpriteURL
+                    
                 }).ToList()
             };
 
@@ -389,7 +391,9 @@ namespace PokedexCore.Application.Services
                         pokemonApiResult.Data.Region ?? "Unknown",
                         pokemonApiResult.Data.CaptureDate,
                         pokemonApiResult.Data.IsShiny,
-                        trainer
+                        trainer,
+                        pokemonApiResult.Data.Level,
+                        pokemonApiResult.Data.SpriteURL                   
                     );
                     // Agregar Pokémon a la base de datos
                     await unitOfWork.Pokemon.AddAsync(basePokemon);

@@ -31,6 +31,8 @@ namespace PokedexCore.Domain.Entities
 
         public int Level { get; set; }
 
+        public string SpriteURL { get; set; }
+
         public PokemonStatus Status { get; set; }
 
         public Trainer Trainer { get; set; }
@@ -52,7 +54,7 @@ namespace PokedexCore.Domain.Entities
         }
 
         public static Pokemon CreatePokemon(string name, string mainType, string region, DateTime captureDate,
-            bool isShiny, Trainer trainer)
+            bool isShiny, Trainer trainer, int s,string spriteURL)
         {
             return new Pokemon
             {                
@@ -64,6 +66,7 @@ namespace PokedexCore.Domain.Entities
                 IsShiny = isShiny,
                 Status = PokemonStatus.Active,
                 Trainer = trainer,
+                SpriteURL = spriteURL,
                 Level = 1
             };
         }

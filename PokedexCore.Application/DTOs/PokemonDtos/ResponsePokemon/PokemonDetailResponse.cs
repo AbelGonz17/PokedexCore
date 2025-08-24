@@ -26,6 +26,8 @@ namespace PokedexCore.Application.DTOs.PokemonDtos.ResponsePokemon
 
         public PokemonStatus Status { get; set; }
 
+        public string SpriteURL { get; set; }
+
         public TrainerBasicResponse Trainer { get; set; }
     }
 }

@@ -88,7 +88,8 @@ namespace PokedexCore.Application.Services
                 Level = 1,
                 IsShiny = false,
                 Status = PokemonStatus.Active,
-                Trainer = null
+                Trainer = null,
+                SpriteURL = data.SpriteUrl
             };
 
             return ApiResponse<PokemonDetailResponse>.Ok(response);
