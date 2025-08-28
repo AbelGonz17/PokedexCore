@@ -23,5 +23,7 @@ namespace PokedexCore.Application.DTOs
         public int Weight { get; set; }
 
         public string Region { get; set; }
+
+        public int Level { get; set; }
     }
 }

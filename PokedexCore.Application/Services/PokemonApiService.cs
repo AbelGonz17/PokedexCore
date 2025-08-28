@@ -24,14 +24,14 @@ namespace PokedexCore.Application.Services
             this.httpClient = httpClient;          
         }
 
-        public async Task<List<PokemonListResponse>> GetAllPokemonsAsync(int limit= 10 , int offset = 0)
+        public async Task<List<PokemonSummaryResponse>> GetAllPokemonsAsync(int limit= 10 , int offset = 0)
         {          
             try
             {        
                 // Obtener la lista de pokemones
                 var listResponse = await httpClient.GetAsync($"https://pokeapi.co/api/v2/pokemon?limit={limit}&offset={offset}");
                 if (!listResponse.IsSuccessStatusCode)
-                    return new List<PokemonListResponse>();
+                    return new List<PokemonSummaryResponse>();
 
                 var listJson = await listResponse.Content.ReadAsStringAsync();
                 var pokemonList = JsonSerializer.Deserialize<PokemonListApiResponse>(listJson, new JsonSerializerOptions
@@ -39,17 +39,18 @@ namespace PokedexCore.Application.Services
                     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
                 });
 
-                var pokemonResponses = new List<PokemonListResponse>();
+                var pokemonResponses = new List<PokemonSummaryResponse>();
               
                 var tasks = pokemonList.Results.Select(async pokemon =>
                 {
                     try
                     {
                         var pokemonData = await GetPokemonDataAsync(pokemon.Name);
-                        return new PokemonListResponse
+                        return new PokemonSummaryResponse
                         {
                             Id = pokemonData.Id,
                             Name = pokemonData.Name,
+                            Level = pokemonData.Level,
                             MainType = pokemonData.Types.FirstOrDefault() ?? "unknown",  
                             SpriteUrl = pokemonData.SpriteUrl,
                             Region = pokemonData.Region,              
@@ -63,11 +64,10 @@ namespace PokedexCore.Application.Services
 
                 var results = await Task.WhenAll(tasks);
                 return results.Where(r => r != null).ToList();           
-
             }
             catch
             {
-                return new List<PokemonListResponse>();
+                return new List<PokemonSummaryResponse>();
             }
         }
 
@@ -85,22 +85,21 @@ namespace PokedexCore.Application.Services
                 Name = data.Name,
                 MainType = data.Types.FirstOrDefault() ?? "unknown",
                 Region = data.Region,
-                CaptureDate = DateTime.UtcNow.Date,
                 Level = 1,
+                CaptureDate = data.CaptureDate,
                 IsShiny = false,
-                Status = PokemonStatus.Active,
-                Trainer = null,
+                Status = PokemonStatus.Active,           
                 SpriteURL = data.SpriteUrl
             };
 
             return ApiResponse<PokemonDetailResponse>.Ok(response);
         }
 
-        public async Task<List<PokemonListResponse>> GetPokemonsByTypeAsync(string type, int limit, int offset)
+        public async Task<List<PokemonSummaryResponse>> GetPokemonsByTypeAsync(string type, int limit, int offset)
         {
             var response = await httpClient.GetAsync($"https://pokeapi.co/api/v2/type/{type.ToLower()}");
             if (!response.IsSuccessStatusCode)
-                return new List<PokemonListResponse>();
+                return new List<PokemonSummaryResponse>();
 
             var json = await response.Content.ReadAsStringAsync();
             var typeData = JsonSerializer.Deserialize<PokemonTypeApiResponse>(json, new JsonSerializerOptions
@@ -120,12 +119,14 @@ namespace PokedexCore.Application.Services
             var tasks = pagedNames.Select(async name =>
             {
                 var pokemonData = await GetPokemonDataAsync(name);
-                return new PokemonListResponse
+                return new PokemonSummaryResponse
                 {
                     Id = pokemonData.Id,
                     Name = pokemonData.Name,
                     MainType = pokemonData.Types.FirstOrDefault() ?? "unknown",
-                    Level = 1
+                    Level = pokemonData.Level,
+                    SpriteUrl = pokemonData.SpriteUrl,
+                    Region = pokemonData.Region
                 };
             });
 
@@ -184,6 +185,8 @@ namespace PokedexCore.Application.Services
 
             var region = await GetPokemonRegionAsync(pokemonName);
 
+            var level = await GetEvolutionLevelRequirementAsync(pokemonName, pokemonApiResponse.Name);
+
             return new PokemonApiData
             {
                 Name = pokemonApiResponse.Name,
@@ -192,7 +195,8 @@ namespace PokedexCore.Application.Services
                 Height = pokemonApiResponse.Height,
                 Weight = pokemonApiResponse.Weight,
                 Id = pokemonApiResponse.Id,
-                Region = region
+                Region = region,
+                Level = level             
             };
         }
 

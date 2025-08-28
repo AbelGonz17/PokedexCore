@@ -240,11 +240,14 @@ namespace PokedexCore.Application.Services
             if (basePokemon == null)
                 return BattleValidationResult.Invalid("This Pokémon species does not exist");
 
-            var myPokemon = await unitOfWork.TrainerPokemons
-                .GetByTrainerAndPokemonAsync(trainerId, basePokemon.Id);
-
-            if (myPokemon == null)
+            // Buscar el Pokémon en tu BD por nombre
+            var myPokemonFromDB = await unitOfWork.Pokemon.GetByConditionAsync(p => p.Name == request.PokemonName.ToLower());
+            if (myPokemonFromDB == null)
                 return BattleValidationResult.Invalid("You don't have this Pokémon in your collection");
+
+            // Verificar que el trainer tenga este Pokémon
+            var myPokemon = await unitOfWork.TrainerPokemons
+                .GetByTrainerAndPokemonAsync(trainerId, myPokemonFromDB.Id);
 
             return BattleValidationResult.Valid(trainer, myPokemon);
         }

@@ -31,14 +31,14 @@ namespace PokedexCore.Application.Services
             this.pokemonApiService = pokemonApiService;
         }
 
-        public async Task<ApiResponse<PagedResponse<PokemonListResponse>>> GetAllAsync(int page , int pageSize, string? type = null)
+        public async Task<ApiResponse<PagedResponse<PokemonSummaryResponse>>> GetAllAsync(int page , int pageSize, string? type = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 50) pageSize = 10;
 
             var offset = (page - 1) * pageSize;
 
-            List<PokemonListResponse> pokemons;
+            List<PokemonSummaryResponse> pokemons;
             int totalCount;
 
             if (!string.IsNullOrWhiteSpace(type))
@@ -62,9 +62,9 @@ namespace PokedexCore.Application.Services
             }
 
             if (pokemons == null || !pokemons.Any())
-                return ApiResponse<PagedResponse<PokemonListResponse>>.Fail("No pokemons found from PokeAPI");
+                return ApiResponse<PagedResponse<PokemonSummaryResponse>>.Fail("No pokemons found from PokeAPI");
 
-            var paged = new PagedResponse<PokemonListResponse>
+            var paged = new PagedResponse<PokemonSummaryResponse>
             {
                 Data = pokemons,
                 TotalCount = totalCount,
@@ -72,7 +72,7 @@ namespace PokedexCore.Application.Services
                 PageSize = pageSize
             };
 
-            return ApiResponse<PagedResponse<PokemonListResponse>>.Ok(paged);
+            return ApiResponse<PagedResponse<PokemonSummaryResponse>>.Ok(paged);
         }
 
         public async Task<ApiResponse<PokemonDetailResponse>> GetByNameFromExternalAsync(string name)
@@ -98,12 +98,10 @@ namespace PokedexCore.Application.Services
                     Id = data.Data.Id,
                     Name = data.Data.Name,
                     MainType = data.Data.MainType,
-                    Region = data.Data.Region,
-                    CaptureDate = data.Data.CaptureDate,
+                    Region = data.Data.Region,                
                     Level = level,
                     IsShiny = false,
-                    Status = PokemonStatus.Active,
-                    Trainer = null,
+                    Status = PokemonStatus.Active,             
                     SpriteURL = data.Data.SpriteURL
                 };
 

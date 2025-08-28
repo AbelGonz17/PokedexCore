@@ -8,7 +8,7 @@ namespace PokedexCore.Application.Interfaces
     public interface IPokemonServices
     {
         Task<string> Delete(int id);     
-        Task<ApiResponse<PagedResponse<PokemonListResponse>>> GetAllAsync(int page , int pageSize, string? type = null);      
+        Task<ApiResponse<PagedResponse<PokemonSummaryResponse>>> GetAllAsync(int page , int pageSize, string? type = null);      
         Task<ApiResponse<PokemonDetailResponse>> GetByNameFromExternalAsync(string name);
         Task<ApiResponse<string>> GetEvolutionInfoAsync(GetEvolutionRequest getEvolutionRequest);    
     }
